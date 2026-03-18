@@ -18,31 +18,24 @@ export function initWSA() {
     const rec = new SpeechRec()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = "en-US"
+    rec.lang = "en-EN"
 
-    window.transcript = ""
     window.isIntentionalStop = true
     window.hasNetworkError = false
 
     rec.onstart = () => console.log("Listening for audio...")
 
     rec.onresult = (event) => {
-        let interim = ""
-        let final = ""
+        let interimText = ""
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript
-            if (event.results[i].isFinal) {
-                final += transcript
-            } else {
-                interim += transcript
+            if (!event.results[i].isFinal) {
+                interimText += event.results[i][0].transcript
             }
         }
 
-        if (final) window.transcript += final
-
         if (window.onSpeechUpdate) {
-            window.onSpeechUpdate({ totalText: window.transcript, interimResults: interim })
+            window.onSpeechUpdate({ text: interimText })
         }
     }
 
@@ -88,7 +81,6 @@ export function startListening() {
 
     window.isIntentionalStop = false
     window.hasNetworkError = false
-    window.transcript = ""
 
     try {
         window.recognition.start()
@@ -115,7 +107,6 @@ export function stopListening() {
 
     try {
         window.recognition.stop()
-        window.transcript = ""
     } catch (e) {
         const message = `Error stopping: ${e.message || e}`
         console.error(message)
