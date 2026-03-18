@@ -23,7 +23,9 @@ export function initWSA() {
     window.isIntentionalStop = true
     window.hasNetworkError = false
 
-    rec.onstart = () => console.log("Listening for audio...")
+    rec.onstart = () => {
+        console.log("Listening for audio...")
+    }
 
     rec.onresult = (event) => {
         let interimText = ""
@@ -52,17 +54,16 @@ export function initWSA() {
     }
 
     rec.onend = () => {
+        let reason = "intentional"
+
         if (!window.isIntentionalStop && !window.hasNetworkError) {
-            console.log("Recognition ended unexpectedly. Restarting...")
-            try {
-                rec.start()
-            } catch (e) {
-                console.error("Failed to restart:", e)
-            }
+            reason = "silence"
         } else if (window.hasNetworkError) {
-            console.log("Recognition stopped due to network error.")
-        } else {
-            console.log("Recognition stopped intentionally.")
+            reason = "network-error"
+        }
+
+        if (window.handleWsaClose) {
+            window.handleWsaClose(reason)
         }
     }
 
@@ -75,6 +76,16 @@ export function startListening() {
         console.error(message)
         if (window.onSpeechError) {
             window.onSpeechError({ error: "not-initialized", message })
+        }
+        return
+    }
+
+    // Check network connectivity before starting
+    if (!navigator.onLine) {
+        const message = ERROR_MESSAGES.network
+        console.error(message)
+        if (window.onSpeechError) {
+            window.onSpeechError({ error: "network", message })
         }
         return
     }

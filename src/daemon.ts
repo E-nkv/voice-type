@@ -11,6 +11,8 @@ export default class Daemon {
     private app: Express
 
     private typingController: TypingController
+    private stopCooldown: boolean = false
+    private stopCooldownTimeout: NodeJS.Timeout | null = null
 
     constructor() {
         this.app = express()
@@ -34,19 +36,39 @@ export default class Daemon {
         })
 
         this.app.get("/stop", async (req, res) => {
-            if (!this.isBrowserReady()) {
-                log("Browser not ready - cannot stop transcription")
-                return
-            }
-            if (!this.isWSAListening) {
-                log("Cannot call stop before start")
-                return
-            }
-            log("Stopping transcription...")
-            this.isWSAListening = false
-            this.typingController.reset()
-            await this.page!.evaluate(stopListening)
+            await this.stopTranscription("intentional")
+            res.send("Stopped")
         })
+    }
+
+    private async stopTranscription(reason: string) {
+        if (this.stopCooldown) {
+            log(`Stop request ignored - still in cooldown period (reason: ${reason})`)
+            return
+        }
+
+        if (!this.isBrowserReady()) {
+            log("Browser not ready - cannot stop transcription")
+            return
+        }
+        if (!this.isWSAListening) {
+            log(`Cannot call stop before start (reason: ${reason})`)
+            return
+        }
+        log(`Stopping transcription... Reason: ${reason}`)
+        this.isWSAListening = false
+        this.typingController.reset()
+
+        // Set cooldown to prevent rapid successive stop requests
+        this.stopCooldown = true
+        if (this.stopCooldownTimeout) {
+            clearTimeout(this.stopCooldownTimeout)
+        }
+        this.stopCooldownTimeout = setTimeout(() => {
+            this.stopCooldown = false
+        }, 1000)
+
+        await this.page!.evaluate(stopListening)
     }
 
     private isBrowserReady(): boolean {
@@ -61,7 +83,6 @@ export default class Daemon {
             args: [
                 "--use-fake-ui-for-media-stream",
                 "--disable-background-timer-throttling",
-                "--user-data-dir=/tmp/stt-chrome-profile",
                 "--log-level=0",
                 "--disable-dev-shm-usage",
                 "--disable-gpu",
@@ -85,13 +106,13 @@ export default class Daemon {
         await this.page.goto("data:text/html,<html><body><h1>Wraith</h1></body></html>")
         await this.page.exposeFunction("onSpeechUpdate", this.handleSpeechUpdate.bind(this))
         await this.page.exposeFunction("onSpeechError", this.handleSpeechError.bind(this))
+        await this.page.exposeFunction("handleWsaClose", this.handleWsaClose.bind(this))
         await this.page.evaluate(initWSA)
     }
 
     private handleSpeechUpdate(payload: { text: string }) {
-        //DEBUG START
         const diffResult = this.typingController.calculateDiff(payload.text)
-        log(`[SpeechUpdate] Text: "${payload.text}" | DiffResult: ${diffResult}`)
+        log(`[SpeechUpdate] "${payload.text}" | ${diffResult}`)
         //DEBUG END
 
         this.typingController.calculateAndApplyDiff(payload.text)
@@ -100,6 +121,11 @@ export default class Daemon {
     private handleSpeechError(payload: { error: string; message: string }) {
         const isWarning = ["network", "not-allowed", "permission-denied"].includes(payload.error)
         log(`${isWarning ? "WARNING" : "ERROR"}: ${payload.message}`)
+    }
+
+    private async handleWsaClose(reason: string) {
+        if (!this.isWSAListening) return
+        await this.stopTranscription(reason)
     }
 
     //start spawns browser and server listener
