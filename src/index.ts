@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer"
 import { initWSA, startListening, stopListening } from "./browser.js"
 import express, { type Express } from "express"
+import { log } from "./logger.js"
 
 process.title = "Wraith-server"
 const PORT = process.env.PORT || 3232
@@ -20,42 +21,42 @@ class Daemon {
 
     private setupRoutes() {
         this.app.get("/start", async (req, res) => {
-            if (!this.page) {
-                this.log("page not ready")
+            if (!this.isBrowserReady()) {
+                log("Browser not ready - cannot start transcription")
                 return
             }
             if (this.isListening) {
-                this.log("Already listening.")
+                log("Already listening.")
                 return
             }
-            this.log("Starting transcription...")
+            log("Starting transcription...")
             this.isListening = true
-            await this.page.evaluate(startListening)
+            await this.page!.evaluate(startListening)
         })
 
         this.app.get("/stop", async (req, res) => {
-            if (!this.page) {
-                this.log("page not ready")
+            if (!this.isBrowserReady()) {
+                log("Browser not ready - cannot stop transcription")
                 return
             }
             if (!this.isListening) {
-                this.log("cannot call stop before start")
+                log("Cannot call stop before start")
                 return
             }
-            this.log("Stopping transcription...")
+            log("Stopping transcription...")
             this.isListening = false
-            await this.page.evaluate(stopListening)
+            await this.page!.evaluate(stopListening)
         })
     }
 
-    private log(message?: any, ...optionalParams: any[]) {
-        console.log(`[DAEMON]`, message, ...optionalParams)
+    private isBrowserReady(): boolean {
+        return this.page !== null && this.browser !== null
     }
 
     private async initBrowser() {
         this.browser = await puppeteer.launch({
             executablePath: "/usr/bin/google-chrome-stable",
-            //@ts-ignore
+            // @ts-ignore
             headless: "new",
             args: [
                 "--use-fake-ui-for-media-stream",
@@ -83,18 +84,24 @@ class Daemon {
 
         await this.page.goto("data:text/html,<html><body><h1>Wraith</h1></body></html>")
         await this.page.exposeFunction("onSpeechUpdate", this.handleSpeechUpdate.bind(this))
+        await this.page.exposeFunction("onSpeechError", this.handleSpeechError.bind(this))
         await this.page.evaluate(initWSA)
     }
 
-    private async handleSpeechUpdate(payload: { totalText: string; interimResults: string }) {
-        console.log(`\n[DAEMON] Total: "${payload.totalText}", Interim: "${payload.interimResults}"`)
+    private handleSpeechUpdate(payload: { totalText: string; interimResults: string }) {
+        log(`Total: "${payload.totalText}", Interim: "${payload.interimResults}"`)
+    }
+
+    private handleSpeechError(payload: { error: string; message: string }) {
+        const isWarning = ["network", "not-allowed", "permission-denied"].includes(payload.error)
+        log(`${isWarning ? "WARNING" : "ERROR"}: ${payload.message}`)
     }
 
     public async start() {
         await this.initBrowser()
 
         this.app.listen(this.port, () => {
-            this.log(`SERVER STARTED ON PORT: ${this.port}`)
+            log(`SERVER STARTED ON PORT: ${this.port}`)
         })
     }
 }

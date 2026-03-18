@@ -1,8 +1,15 @@
+const ERROR_MESSAGES = {
+    network: "Network unavailable - Web Speech API requires internet connection",
+    "not-allowed": "Microphone access denied - check browser settings",
+    "permission-denied": "Microphone access denied - check browser settings",
+    "audio-capture": "No microphone found - check audio input devices",
+    aborted: "Speech recognition was aborted",
+}
+
 export function initWSA() {
     console.log("initWSA script is running inside the browser!")
 
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
-
     if (!SpeechRec) {
         console.error("FATAL: Web Speech API is not supported in this browser context.")
         return
@@ -14,72 +21,106 @@ export function initWSA() {
     rec.lang = "en-US"
 
     window.transcript = ""
-    window.isIntentionalStop = true // Start in a paused state
+    window.isIntentionalStop = true
+    window.hasNetworkError = false
 
     rec.onstart = () => console.log("Listening for audio...")
 
     rec.onresult = (event) => {
-        let currentInterim = ""
-        let currentFinal = ""
+        let interim = ""
+        let final = ""
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript
             if (event.results[i].isFinal) {
-                currentFinal += event.results[i][0].transcript
+                final += transcript
             } else {
-                currentInterim += event.results[i][0].transcript
+                interim += transcript
             }
         }
 
-        if (currentFinal) {
-            window.transcript += currentFinal
-        }
+        if (final) window.transcript += final
 
         if (window.onSpeechUpdate) {
-            window.onSpeechUpdate({
-                totalText: window.transcript,
-                interimResults: currentInterim,
-            })
+            window.onSpeechUpdate({ totalText: window.transcript, interimResults: interim })
         }
     }
 
     rec.onerror = (event) => {
-        console.error("Speech recognition error:", event.error)
+        if (event.error === "no-speech") return
+
+        const message = ERROR_MESSAGES[event.error] || `Speech recognition error: ${event.error}`
+        if (event.error === "network") window.hasNetworkError = true
+
+        console.error(message)
+        if (window.onSpeechError) {
+            window.onSpeechError({ error: event.error, message })
+        }
     }
 
     rec.onend = () => {
-        // If WSA dropped the mic due to silence, but the user didn't hit /stop, restart it!
-        if (!window.isIntentionalStop) {
-            console.log("Recognition ended unexpectedly (silence timeout). Restarting...")
+        if (!window.isIntentionalStop && !window.hasNetworkError) {
+            console.log("Recognition ended unexpectedly. Restarting...")
             try {
                 rec.start()
             } catch (e) {
                 console.error("Failed to restart:", e)
             }
+        } else if (window.hasNetworkError) {
+            console.log("Recognition stopped due to network error.")
         } else {
             console.log("Recognition stopped intentionally.")
         }
     }
 
-    // Attach to window so startListening/stopListening can access it
     window.recognition = rec
 }
 
-// These functions will be evaluated by Puppeteer when the Express routes are hit
 export function startListening() {
+    if (!window.recognition) {
+        const message = "Speech recognition not initialized"
+        console.error(message)
+        if (window.onSpeechError) {
+            window.onSpeechError({ error: "not-initialized", message })
+        }
+        return
+    }
+
     window.isIntentionalStop = false
+    window.hasNetworkError = false
+    window.transcript = ""
+
     try {
         window.recognition.start()
     } catch (e) {
-        console.log("err starting WSA: ", err)
+        const message = `Error starting: ${e.message || e}`
+        console.error(message)
+        if (window.onSpeechError) {
+            window.onSpeechError({ error: "start-failed", message })
+        }
     }
 }
 
 export function stopListening() {
+    if (!window.recognition) {
+        const message = "Speech recognition not initialized"
+        console.error(message)
+        if (window.onSpeechError) {
+            window.onSpeechError({ error: "not-initialized", message })
+        }
+        return
+    }
+
     window.isIntentionalStop = true
+
     try {
         window.recognition.stop()
         window.transcript = ""
     } catch (e) {
-        console.log("err closing WSA: ", err)
+        const message = `Error stopping: ${e.message || e}`
+        console.error(message)
+        if (window.onSpeechError) {
+            window.onSpeechError({ error: "stop-failed", message })
+        }
     }
 }
