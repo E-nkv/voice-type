@@ -1,12 +1,12 @@
-import puppeteer from "puppeteer"
+import puppeteer, { Browser, Page } from "puppeteer-core"
 import { startListening, stopListening, initWSA } from "./browser.js"
 import TypingController from "./typingController.js"
 import { log } from "./logger.js"
 import express, { type Express } from "express"
 
 export default class Daemon {
-    private browser: puppeteer.Browser | null = null
-    private page: puppeteer.Page | null = null
+    private browser: Browser | null = null
+    private page: Page | null = null
     private isWSAListening: boolean = false
     private app: Express
 
@@ -123,10 +123,10 @@ export default class Daemon {
     }
 
     //start spawns browser and server listener
-    public async start(port: number | string) {
+    public async start(port: number) {
         await this.initBrowser()
 
-        this.app.listen(port, () => {
+        this.app.listen(port, "127.0.0.1", () => {
             log(`SERVER STARTED ON PORT: ${port}`)
         })
     }

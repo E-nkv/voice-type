@@ -1,4 +1,3 @@
-import { DiffEnum } from "../types.js"
 import TypingController from "../typingController.js"
 
 async function test() {

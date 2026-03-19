@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         "target": "ES2022",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
         "lib": ["ES2022"],
         "outDir": "./dist",
         "rootDir": "./src",
@@ -17,12 +17,12 @@
         "declaration": false,
         "declarationMap": false,
         "sourceMap": false,
-        "allowImportingTsExtensions": false,
-        "noEmit": false,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
         "isolatedModules": true,
         "verbatimModuleSyntax": true,
-        "types": ["node"]
+        "types": ["bun-types", "@types/express"]
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.spec.ts"]
+    "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }

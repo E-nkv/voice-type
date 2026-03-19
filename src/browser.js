@@ -1,11 +1,3 @@
-const ERROR_MESSAGES = {
-    network: "Network unavailable - Web Speech API requires internet connection",
-    "not-allowed": "Microphone access denied - check browser settings",
-    "permission-denied": "Microphone access denied - check browser settings",
-    "audio-capture": "No microphone found - check audio input devices",
-    aborted: "rec was aborted",
-}
-
 export function initWSA() {
     console.log("initWSA script is running inside the browser!")
 
@@ -39,7 +31,7 @@ export function initWSA() {
     }
 
     rec.onerror = (event) => {
-        console.error(JSON.stringify(event))
+        console.error("rec error: ", JSON.stringify(event))
         if (window.onOffline) window.onOffline()
     }
 
@@ -75,7 +67,7 @@ export function stopListening() {
     try {
         window.recognition.stop()
     } catch (e) {
-        const message = `Error stopping rec: ${e.message || e}`
+        const message = `Error stopping rec: ${e.message || JSON.stringify(e)}`
         console.error(message)
     }
 }
