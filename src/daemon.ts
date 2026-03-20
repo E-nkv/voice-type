@@ -110,6 +110,8 @@ export default class Daemon {
                 "--no-first-run",
                 "--safebrowsing-disable-auto-update",
                 "--disable-features=IsolateOrigins,site-per-process",
+                "--user-data-dir=/tmp/wraith-browser",
+                "--process-per-site",
             ],
             name: "Wraith-browser",
         })
@@ -124,6 +126,7 @@ export default class Daemon {
     }
 
     private handleSpeechUpdate(payload: { text: string }) {
+        //DEBUG START
         const diffResult = this.typingController.calculateDiff(payload.text)
         log(`[SpeechUpdate] "${payload.text}" | ${diffResult}`)
         //DEBUG END

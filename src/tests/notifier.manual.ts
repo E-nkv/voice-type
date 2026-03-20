@@ -11,16 +11,8 @@ async function zzz(ms: number) {
 
 // Run individual tests by uncommenting:
 async function m() {
-    not.notifyDaemonStart("F9")
-    await zzz(1000)
-    not.notifyMicStart()
-    await zzz(1000)
     not.notifyMicStop()
-    await zzz(1000)
-    not.notifyOffline()
-    await zzz(1000)
-    not.notifyError("unknown error")
-    await zzz(1000)
+
     // Force exit after cleanup to ensure no lingering processes
 }
 
