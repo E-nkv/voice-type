@@ -150,4 +150,18 @@ export default class Daemon {
             log(`Startup error: ${e}`)
         }
     }
+
+    /**
+     * Cleanup resources when shutting down the daemon
+     */
+    public async destroy() {
+        log("Shutting down daemon...")
+        this.notifier.destroy()
+        if (this.browser) {
+            await this.browser.close()
+        }
+        if (this.stopCooldownTimeout) {
+            clearTimeout(this.stopCooldownTimeout)
+        }
+    }
 }

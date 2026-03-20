@@ -1,98 +1,50 @@
-import { spawn } from "child_process"
-import type { Urgency } from "./types"
+import { TextNotifier } from "./textNotifier"
+import { SoundNotifier } from "./soundNotifier"
 
-const SOUNDS = {
-    START: "/usr/share/sounds/freedesktop/stereo/dialog-warning.oga",
-    DAEMON_START: "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga",
-    STOP: "/usr/share/sounds/freedesktop/stereo/power-unplug.oga",
-    ERROR: "/usr/share/sounds/freedesktop/stereo/dialog-error.oga",
-}
-
+/**
+ * Main notifier that composes TextNotifier and SoundNotifier
+ * Provides a clean API for all notification types
+ */
 export default class Notifier {
-    private textNotifsEnabled = true
-    private soundsNotifsEnabled = true
-    private readonly NOTIFY_ID = 42069 // arbitrary integer so that new notifs replace old one (in libnotify)
+    private textNotifier: TextNotifier
+    private soundNotifier: SoundNotifier
 
-    constructor(opts: { textNotifsEnabled?: boolean; soundsNotifsEnabled?: boolean }) {
-        if (opts.textNotifsEnabled !== undefined) this.textNotifsEnabled = opts.textNotifsEnabled
-        if (opts.soundsNotifsEnabled !== undefined) this.soundsNotifsEnabled = opts.soundsNotifsEnabled
-    }
-
-    private notifyText(
-        title: string,
-        message: string,
-        icon: string,
-        urgency: Urgency = "normal",
-        durationMs: number = 1000,
-    ) {
-        if (!this.textNotifsEnabled) return
-        const args = [
-            "-r",
-            String(this.NOTIFY_ID),
-            "-a",
-            "Wraith",
-            "-u",
-            urgency,
-            "-i",
-            icon,
-            "-t",
-            String(durationMs),
-            "--transient",
-            title,
-            message,
-        ]
-        spawn("notify-send", args)
-    }
-
-    private notifySound(audioPath: string) {
-        if (!this.soundsNotifsEnabled || !audioPath) return
-        spawn("paplay", [audioPath])
+    constructor(opts: { textNotifsEnabled?: boolean; soundsNotifsEnabled?: boolean } = {}) {
+        this.textNotifier = new TextNotifier(opts.textNotifsEnabled ?? true)
+        this.soundNotifier = new SoundNotifier(opts.soundsNotifsEnabled ?? true)
     }
 
     // --- Specialized Notifiers ---
 
-    public notifyDaemonStart(hotkey: string = "F9") {
-        this.notifyText(
-            "👻 Wraith Daemon Active",
-            `Ready to transcribe. Press ${hotkey} to start.`,
-            "microphone-sensitivity-high",
-            "normal",
-        )
-        this.notifySound(SOUNDS.DAEMON_START)
+    async notifyDaemonStart(hotkey: string = "F9") {
+        await this.textNotifier.notifyDaemonStart(hotkey)
+        this.soundNotifier.notifyDaemonStart()
     }
 
-    public notifyMicStart() {
-        this.notifyText(
-            "🟢 Wraith Listening...",
-            "Typing into the focused window.",
-            "microphone-sensitivity-high",
-            "normal",
-        )
-        this.notifySound(SOUNDS.START)
+    async notifyMicStart() {
+        await this.textNotifier.notifyMicStart()
+        this.soundNotifier.notifyMicStart()
     }
 
-    public notifyMicStop() {
-        this.notifyText(
-            "🛑 Wraith Stopped",
-            "Microphone closed. Text finalized.",
-            "microphone-sensitivity-muted",
-            "normal",
-        )
-        this.notifySound(SOUNDS.STOP)
+    async notifyMicStop() {
+        await this.textNotifier.notifyMicStop()
+        this.soundNotifier.notifyMicStop()
     }
 
-    public notifyOffline() {
-        this.notifyText(
-            "📡 Connection Error",
-            "WSA requires internet to transcribe speech.",
-            "network-error",
-            "critical",
-        )
-        this.notifySound(SOUNDS.ERROR)
+    async notifyOffline() {
+        await this.textNotifier.notifyOffline()
+        this.soundNotifier.notifyOffline()
     }
 
-    public notifyError(msg: string) {
-        this.notifyText("⚠️ Wraith Error", msg, "dialog-error", "critical")
-        this.notifySound(SOUNDS.ERROR)
+    async notifyError(msg: string) {
+        await this.textNotifier.notifyError(msg)
+        this.soundNotifier.notifyError()
+    }
+
+    /**
+     * Call this when the daemon shuts down to clean up the D-Bus connection
+     */
+    destroy() {
+        this.textNotifier.destroy()
     }
 }
