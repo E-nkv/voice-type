@@ -1,4 +1,4 @@
-export function initWSA() {
+export function initWSA(lang) {
     console.log("initWSA script is running inside the browser!")
 
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -10,7 +10,7 @@ export function initWSA() {
     const rec = new SpeechRec()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = "es-ES"
+    rec.lang = lang !== undefined ? lang : "en-US"
 
     rec.onstart = () => {
         console.log("Listening...")

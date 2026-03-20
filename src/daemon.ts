@@ -6,21 +6,22 @@ import express, { type Express } from "express"
 import Notifier from "./notifier.js"
 
 export default class Daemon {
+    private wsaLanguage: string = "en-US"
     private browser: Browser | null = null
     private page: Page | null = null
     private isWSAListening: boolean = false
     private app: Express
 
-    private typingController: TypingController
+    private typingController: TypingController = new TypingController()
     private notifier: Notifier
     private stopCooldown: boolean = false
     private stopCooldownTimeout: NodeJS.Timeout | null = null
 
-    constructor() {
+    constructor(textNotifsEnabled: boolean, soundsNotifsEnabled: boolean, wsaLanguage?: string) {
         this.app = express()
         this.setupRoutes()
-        this.typingController = new TypingController()
-        this.notifier = new Notifier({ textNotifsEnabled: true, soundsNotifsEnabled: true })
+        this.notifier = new Notifier({ textNotifsEnabled, soundsNotifsEnabled })
+        if (wsaLanguage !== undefined) this.wsaLanguage = wsaLanguage
     }
 
     private setupRoutes() {
@@ -122,15 +123,10 @@ export default class Daemon {
         await this.page.goto("data:text/html,<html><body><h1>Wraith</h1></body></html>")
         await this.page.exposeFunction("onSpeechUpdate", this.handleSpeechUpdate.bind(this))
         await this.page.exposeFunction("onOffline", this.handleOffline.bind(this))
-        await this.page.evaluate(initWSA)
+        await this.page.evaluate(initWSA, this.wsaLanguage)
     }
 
     private handleSpeechUpdate(payload: { text: string }) {
-        //DEBUG START
-        const diffResult = this.typingController.calculateDiff(payload.text)
-        log(`[SpeechUpdate] "${payload.text}" | ${diffResult}`)
-        //DEBUG END
-
         this.typingController.calculateAndApplyDiff(payload.text)
     }
 
@@ -160,11 +156,9 @@ export default class Daemon {
     public async destroy() {
         log("Shutting down daemon...")
         this.notifier.destroy()
-        if (this.browser) {
-            await this.browser.close()
-        }
-        if (this.stopCooldownTimeout) {
-            clearTimeout(this.stopCooldownTimeout)
-        }
+        this.page?.close()
+        this.browser?.close()
+        this.typingController.destroy()
+        clearTimeout(this.stopCooldownTimeout ?? undefined)
     }
 }

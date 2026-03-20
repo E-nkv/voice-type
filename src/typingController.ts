@@ -93,7 +93,7 @@ export default class TypingController {
 
     public calculateAndApplyDiff(str: string) {
         const diffRes = this.calculateDiff(str)
-
+        if (diffRes == DiffEnum.ChangeResAndClear) log(`[SpeechUpdate] "${this.prevText}"`)
         this.applyDiff(str, diffRes)
     }
 }
