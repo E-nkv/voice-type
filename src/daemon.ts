@@ -111,16 +111,16 @@ export default class Daemon {
                 "--no-first-run",
                 "--safebrowsing-disable-auto-update",
                 "--disable-features=IsolateOrigins,site-per-process",
-                "--user-data-dir=/tmp/wraith-browser",
+                "--user-data-dir=/tmp/voice-type-browser",
                 "--process-per-site",
             ],
-            name: "Wraith-browser",
+            name: "Voice-Type-browser",
         })
 
         this.page = await this.browser.newPage()
         this.page.on("console", (msg) => console.log("[BROWSER]", msg.text()))
 
-        await this.page.goto("data:text/html,<html><body><h1>Wraith</h1></body></html>")
+        await this.page.goto("data:text/html,<html><body><h1>Voice Type</h1></body></html>")
         await this.page.exposeFunction("onSpeechUpdate", this.handleSpeechUpdate.bind(this))
         await this.page.exposeFunction("onOffline", this.handleOffline.bind(this))
         await this.page.evaluate(initWSA, this.wsaLanguage)
@@ -145,7 +145,7 @@ export default class Daemon {
             })
             await this.initBrowser()
         } catch (e) {
-            this.notifier.notifyError("Failed to initialize Wraith daemon.")
+            this.notifier.notifyError("Failed to initialize Voice Type daemon.")
             log(`Startup error: ${e}`)
         }
     }

@@ -1,8 +1,8 @@
 import Daemon from "./daemon.js"
 //import { flags } from "./cli.js"
 
-process.title = "wraith"
-process.argv[0] = "wraith"
+process.title = "voice-type"
+process.argv[0] = "voice-type"
 
 const PORT = Number(process.env.PORT) || 3232
 

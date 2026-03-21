@@ -12,7 +12,7 @@ export class TextNotifier {
     private bus: MessageBus | null = null
     private notifyInterface: any = null
     private lastNotificationId: number = 0
-    private readonly SYNC_ID = "wraith-dictation"
+    private readonly SYNC_ID = "voice-type-dictation"
 
     constructor(enabled: boolean = true) {
         this.enabled = enabled
@@ -58,7 +58,7 @@ export class TextNotifier {
             // D-Bus Notify Signature:
             // app_name, replaces_id, app_icon, summary, body, actions, hints, timeout
             this.lastNotificationId = await this.notifyInterface.Notify(
-                "Wraith",
+                "Voice Type",
                 this.lastNotificationId, // Use the stored ID to replace the existing popup
                 icon,
                 title,
@@ -70,7 +70,7 @@ export class TextNotifier {
         } catch (error) {
             log("D-Bus Notification Error:" + JSON.stringify(error))
             // Fallback to basic notify-send if D-Bus fails
-            spawn("notify-send", ["-a", "Wraith", "-r", "42069", title, message])
+            spawn("notify-send", ["-a", "Voice Type", "-r", "42069", title, message])
         }
     }
 
@@ -78,7 +78,7 @@ export class TextNotifier {
 
     async notifyDaemonStart(hotkey: string = "F9") {
         await this.notify(
-            "👻 Wraith Daemon Active",
+            "🎤 Voice Type Daemon Active",
             `Ready to transcribe. Press ${hotkey} to start.`,
             "microphone-sensitivity-high",
             "normal",
@@ -87,7 +87,7 @@ export class TextNotifier {
 
     async notifyMicStart() {
         await this.notify(
-            "🟢 Wraith Listening...",
+            "🟢 Voice Type Listening...",
             "Typing into the focused window.",
             "microphone-sensitivity-high",
             "normal",
@@ -96,7 +96,7 @@ export class TextNotifier {
 
     async notifyMicStop() {
         await this.notify(
-            "🛑 Wraith Stopped",
+            "🛑 Voice Type Stopped",
             "Microphone closed. Text finalized.",
             "microphone-sensitivity-muted",
             "normal",
@@ -113,7 +113,7 @@ export class TextNotifier {
     }
 
     async notifyError(msg: string) {
-        await this.notify("⚠️ Wraith Error", msg, "dialog-error", "critical")
+        await this.notify("⚠️ Voice Type Error", msg, "dialog-error", "critical")
     }
 
     destroy() {

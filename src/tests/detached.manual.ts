@@ -3,11 +3,11 @@ import { spawn } from "child_process"
 
 import { parseArgs, type ParseArgsOptionsConfig } from "node:util"
 
-process.title = "wraith"
+process.title = "voice-type"
 const HELP_TEXT = `
-WRAITH - Real-Time Dictation Daemon
+VOICE TYPE - Real-Time Dictation Daemon
 
-Usage: wraith [options]
+Usage: voice-type [options]
 
 Options:
   --lang <lang>     Set Web Speech API language (e.g., en-US, es-ES). Default: en-US
@@ -62,7 +62,7 @@ if (flags.detached) {
     // Unreference the child so the parent process can exit immediately
     child.unref()
 
-    console.log(`Wraith daemon started in detached mode. PID: ${child.pid}`)
+    console.log(`Voice Type daemon started in detached mode. PID: ${child.pid}`)
     process.exit(0)
 }
 

@@ -11,14 +11,14 @@ async function runTest() {
     // Hints to tell GNOME: "This is a real-time status update, don't save to history"
     const hints = {
         transient: new Variant("b", true),
-        "x-canonical-private-synchronous": new Variant("s", "wraith-dictation"),
+        "x-canonical-private-synchronous": new Variant("s", "voice-type-dictation"),
     }
 
     console.log("Sending first notification...")
 
     // D-Bus Signature: app_name (s), replaces_id (u), app_icon (s), summary (s), body (s), actions (as), hints (a{sv}), timeout (i)
     const id1 = await notify.Notify(
-        "Wraith",
+        "Voice Type",
         0, // 0 means "create a new notification"
         "microphone-sensitivity-high",
         "🟢 123",
@@ -37,7 +37,7 @@ async function runTest() {
 
         try {
             const id2 = await notify.Notify(
-                "Wraith",
+                "Voice Type",
                 id1, // Pass the ID of the first notification to replace it!
                 "microphone-sensitivity-high",
                 "🟢 567",

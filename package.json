@@ -1,5 +1,5 @@
 {
-    "name": "wraith",
+    "name": "voice-type",
     "version": "1.0.0",
     "main": "src/index.ts",
     "dependencies": {

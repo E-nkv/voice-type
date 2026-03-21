@@ -1,8 +1,8 @@
-# WRAITH - Persistent Real-Time Speech-to-Text Daemon
+# VOICE TYPE - Persistent Real-Time Speech-to-Text Daemon
 
 ## Overview
 
-WRAITH is a persistent, real-time speech-to-text (STT) dictation daemon designed specifically for Linux Wayland (Arch/GNOME). It runs silently in the background and allows you to inject highly accurate transcribed speech directly into any active application window instantly, bypassing the need for heavy local AI models or paid APIs.
+Voice Type is a persistent, real-time speech-to-text (STT) dictation daemon designed specifically for Linux Wayland (Arch/GNOME). It runs silently in the background and allows you to inject highly accurate transcribed speech directly into any active application window instantly, bypassing the need for heavy local AI models or paid APIs.
 
 ## What It Does (Core Workflow)
 
@@ -10,7 +10,7 @@ WRAITH is a persistent, real-time speech-to-text (STT) dictation daemon designed
 
 2. **Listen**: A persistent, hidden browser tab activates your microphone and starts streaming audio to the Web Speech API.
 
-3. **Process & Diff**: As interim text streams back in milliseconds, WRAITH calculates the difference between the new text and what was already typed.
+3. **Process & Diff**: As interim text streams back in milliseconds, Voice Type calculates the difference between the new text and what was already typed.
 
 4. **Phantom Backspace**: If the AI corrects a word mid-sentence, the daemon instantly fires virtual "Backspace" keys to erase the mistake.
 
@@ -23,7 +23,7 @@ WRAITH is a persistent, real-time speech-to-text (STT) dictation daemon designed
 ### Component Breakdown
 
 #### Entry Point: `src/index.ts`
-- Sets process title to `wraith-daemon`
+- Sets process title to `voice-type-daemon`
 - Initializes the Daemon instance
 - Starts the daemon on the configured port (default: 3232)
 
@@ -47,7 +47,7 @@ The `Daemon` class is the central coordinator that manages all components:
 **Browser Configuration:**
 - Uses `puppeteer-core` with Google Chrome Stable
 - Headless mode with extensive optimization flags
-- Custom user data directory at `/tmp/wraith-browser`
+- Custom user data directory at `/tmp/voice-type-browser`
 - Exposes functions to browser context: `onSpeechUpdate`, `onOffline`
 
 #### Browser Integration: `src/browser.js`
@@ -175,7 +175,7 @@ The text diffing algorithm enables "phantom backspace" functionality:
 - This allows the AI to correct itself mid-sentence without user intervention
 
 ### 3. D-Bus Notification Replacement
-GNOME's notification system has built-in throttling and queuing. WRAITH bypasses this by:
+GNOME's notification system has built-in throttling and queuing. Voice Type bypasses this by:
 - Using `replaces_id` to replace the previous notification
 - Setting `transient` hint to prevent history logging
 - Using `x-canonical-private-synchronous` for instant updates
@@ -225,12 +225,12 @@ Create a user systemd service for persistent operation:
 
 ```ini
 [Unit]
-Description=Wraith Speech-to-Text Daemon
+Description=Voice Type Speech-to-Text Daemon
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/path/to/wraith-daemon
+ExecStart=/path/to/voice-type-daemon
 Restart=always
 RestartSec=5
 

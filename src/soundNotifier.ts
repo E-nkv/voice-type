@@ -13,7 +13,7 @@ function getSoundsDir(): string {
     }
 
     // In production, use system-wide assets
-    return "/usr/local/share/wraith/sounds"
+    return "/usr/local/share/voice-type/sounds"
 }
 
 const SOUNDS = {
