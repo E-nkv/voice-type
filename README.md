@@ -1,4 +1,4 @@
-# WRAITH
+# wraith
 
 Real-time speech-to-text dictation for Linux. Type into any application using your voice.
 
@@ -11,38 +11,21 @@ Real-time speech-to-text dictation for Linux. Type into any application using yo
 - **Zero Latency**: Browser runs persistently in the background - no startup delay when you press the hotkey.
 - **No API Keys**: Uses Chrome's built-in Web Speech API - no paid services or local AI models needed.
 
-## Installation
+## Installation and setup
 
-### Quick Install (with system dependencies)
-
-```bash
-curl -fhsSL https://github.com/E-nkv/wraith/releases/latest/download/install-sysdeps.sh | bash
-curl -fhsSL https://github.com/E-nkv/wraith/releases/latest/download/install.sh | bash
-```
-
-### Manual Install
-
-If you prefer to install system dependencies yourself, or if the automated sysdeps script has issues on your system:
-
-1. Install system dependencies manually:
-   - **Arch Linux**: `yay -S dotool google-chrome` (plus `libnotify` and `paplay` from official repos)
-   - **Debian/Ubuntu**: `sudo apt install dotool libnotify-bin pulseaudio-utils google-chrome-stable`
-   - **Fedora**: `sudo dnf install dotool libnotify pulseaudio-utils google-chrome-stable`
-
-2. Install WRAITH:
 ```bash
 curl -fhsSL https://github.com/E-nkv/wraith/releases/latest/download/install.sh | bash
 ```
 
-### System Dependencies
+This will install wraith and automatically attempt to install any missing system dependencies. If the automated dependency installation fails on your system, you can install them manually:
 
-WRAITH requires the following:
-- **dotool** - Wayland-compatible virtual keyboard input
-- **libnotify** - Desktop notifications
-- **pulseaudio-utils** - Sound playback (paplay) for feedback
-- **Google Chrome** - For the Web Speech API (most accurate and fast)
+- **Arch Linux**: `yay -S dotool google-chrome` (plus `libnotify` and `paplay` from official repos)
+- **Debian/Ubuntu**: `sudo apt install dotool libnotify-bin pulseaudio-utils google-chrome-stable`
+- **Fedora**: `sudo dnf install dotool libnotify pulseaudio-utils google-chrome-stable`
 
 ## Keyboard Shortcuts
+
+wraith runs as a daemon and listens for HTTP requests to start/stop dictation. You'll want to set up keyboard shortcuts so you can actually use it without manually running curl commands.
 
 ### GNOME
 
@@ -50,19 +33,28 @@ Open GNOME Settings → Keyboard → Custom Shortcuts, then add:
 
 **Start Dictation (F9):**
 
-- Name: WRAITH Start
+- Name: wraith Start
 - Command: `curl http://127.0.0.1:3232/start`
 - Shortcut: F9
 
 **Stop Dictation (F10):**
 
-- Name: WRAITH Stop
+- Name: wraith Stop
 - Command: `curl http://127.0.0.1:3232/stop`
 - Shortcut: F10
 
 ### Other Desktop Environments
 
 Non-GNOME shortcut configuration documentation is coming soon. For now, manually bind F9 to `curl http://127.0.0.1:3232/start` and F10 to `curl http://127.0.0.1:3232/stop`.
+
+## System Dependencies
+
+wraith requires the following:
+
+- **dotool** - Wayland-compatible virtual keyboard input
+- **libnotify** - Desktop notifications
+- **pulseaudio-utils** - Sound playback (paplay) for feedback
+- **Google Chrome** - For the Web Speech API (most accurate and fast)
 
 ## Usage
 
@@ -77,15 +69,6 @@ Non-GNOME shortcut configuration documentation is coming soon. For now, manually
 2. Speak into your microphone
 3. Text appears in real-time in your focused window
 4. Press F10 to stop listening
-
-## Technology
-
-- **Bun + TypeScript**: Fast runtime and type safety
-- **Puppeteer**: Manages a headless Chrome browser
-- **Chrome Web Speech API**: High-quality cloud transcription
-- **dotool**: Wayland-compatible virtual keyboard input
-- **libnotify**: Desktop notifications
-- **paplay**: Sound playback for feedback
 
 ## Requirements
 
