@@ -1,20 +1,21 @@
-# wraith
+# What's wraith?
 
-Real-time speech-to-text dictation for Linux. Type into any application using your voice.
+A Linux first system-wide dictation tool to transcribe Speech To Text (STT) with unmatched accuracy and speed, totally free.
 
 ## Features
 
-- **Instant Dictation**: Press a hotkey and start speaking. Text appears in real-time in whatever window you have focused.
+- **Instant Dictation**: Press a hotkey and start speaking. Text appears in real-time in whatever window you have focused in the system.
 - **Auto-Correction**: If the AI corrects a word mid-sentence, it automatically backspaces and types the corrected version.
 - **System-Wide**: Works in any application - text editors, browsers, terminals, messaging apps, etc.
 - **Visual & Audio Feedback**: Get instant confirmation when listening starts, stops, or if there's an error.
 - **Zero Latency**: Browser runs persistently in the background - no startup delay when you press the hotkey.
 - **No API Keys**: Uses Chrome's built-in Web Speech API - no paid services or local AI models needed.
+- **No local models required**: The browser Web Speech Api handles the transcription process entirely, so there's no need to install and setup models locally (like vosk or whisper).
 
 ## Installation and setup
 
 ```bash
-curl -fhsSL https://github.com/E-nkv/wraith/releases/latest/download/install.sh | bash
+curl -fhsSL https://github.com/E-nkv/wraith/releases/download/latest/install.sh | bash
 ```
 
 This will install wraith and automatically attempt to install any missing system dependencies. If the automated dependency installation fails on your system, you can install them manually:
