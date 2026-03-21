@@ -51,7 +51,6 @@ if (flags.help) {
 
 // 3. Handle Detached Mode (Daemonization)
 if (flags.detached) {
-    console.log("👻 Spawning Wraith in the background...")
     const childArgs = process.argv.slice(1).filter((arg) => arg !== "--detached" && arg !== "-d")
 
     // Spawn the exact same binary, but detached from the current terminal
@@ -63,7 +62,7 @@ if (flags.detached) {
     // Unreference the child so the parent process can exit immediately
     child.unref()
 
-    console.log(`Wraith daemon started with PID: ${child.pid}`)
+    console.log(`Wraith daemon started in detached mode. PID: ${child.pid}`)
     process.exit(0)
 }
 

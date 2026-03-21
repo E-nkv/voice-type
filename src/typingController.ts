@@ -11,7 +11,12 @@ export default class TypingController {
     }
 
     private initDotool() {
-        const dotool = spawn("dotool")
+        const dotool = spawn("dotool", [], {
+            // We force "us" layout so standard ASCII characters always map correctly.
+            // All accents and special characters will be handled by our Hex Input logic.
+            env: { ...process.env, DOTOOL_XKB_LAYOUT: "us" },
+        })
+
         dotool.stderr.on("data", (data) => {
             const lines = data.toString().split("\n").filter(Boolean)
             for (const line of lines) {
@@ -24,6 +29,7 @@ export default class TypingController {
 
         return dotool
     }
+
     public sendBackspaces(count: number) {
         if (count <= 0) return
         if (!this.dotool.stdin.writable) {
@@ -41,7 +47,54 @@ export default class TypingController {
             log("dotool stdin not writable")
             return
         }
-        this.dotool.stdin.write(`type ${text}\n`)
+
+        let script = ""
+        let asciiBuffer = ""
+
+        // Helper to flush standard characters to the script
+        const flushAscii = () => {
+            if (asciiBuffer.length > 0) {
+                script += `type ${asciiBuffer}\n`
+                asciiBuffer = ""
+            }
+        }
+
+        // Iterate over the string by Unicode code points (safely handles emojis)
+        for (const char of text) {
+            const codePoint = char.codePointAt(0)
+            if (!codePoint) continue
+
+            // Handle Newlines
+            if (codePoint === 10) {
+                flushAscii()
+                script += `key enter\n`
+            }
+            // Handle standard printable ASCII (a-z, 0-9, basic punctuation)
+            else if (codePoint >= 32 && codePoint <= 126) {
+                asciiBuffer += char
+            }
+            // Handle Accents, Dead Keys, Emojis, and CJK (Chinese/Japanese)
+            else {
+                flushAscii()
+                const hex = codePoint.toString(16)
+
+                // GNOME/GTK Unicode Hex Input Sequence using chord notation
+                script += `key ctrl+shift+u\n`
+
+                // Type the hex code
+                for (const hexChar of hex) {
+                    script += `key ${hexChar}\n`
+                }
+
+                // Confirm the hex input
+                script += `key enter\n`
+            }
+        }
+
+        flushAscii()
+
+        // Send the entire sequence to dotool instantly
+        this.dotool.stdin.write(script)
     }
 
     public applyDiff(currText: string, diffResult: DiffEnum) {
