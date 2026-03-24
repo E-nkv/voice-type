@@ -34,9 +34,14 @@ export default class Notifier {
         this.soundNotifier.notifyError()
     }
 
-    /**
-     * Call this when the daemon shuts down to clean up the D-Bus connection
-     */
+    async notifyDaemonStarted() {
+        await this.textNotifier.notifyDaemonStarted()
+    }
+
+    async notifyDaemonStopped() {
+        await this.textNotifier.notifyDaemonStopped()
+    }
+
     destroy() {
         this.textNotifier.destroy()
     }

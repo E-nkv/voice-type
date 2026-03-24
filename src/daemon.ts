@@ -47,6 +47,14 @@ export default class Daemon {
             await this.stopTranscription("intentional")
             res.send("Stopped")
         })
+
+        this.app.get("/exit", async (req, res) => {
+            log("Exit requested...")
+            await this.notifier.notifyDaemonStopped()
+            res.send("Shutting down")
+            await this.destroy()
+            process.exit(0)
+        })
     }
 
     private async stopTranscription(reason: "intentional" | "offline") {
@@ -111,7 +119,6 @@ export default class Daemon {
                 "--no-first-run",
                 "--safebrowsing-disable-auto-update",
                 "--disable-features=IsolateOrigins,site-per-process",
-                "--user-data-dir=/tmp/voice-type-browser",
                 "--process-per-site",
             ],
             name: "Voice-Type-browser",
@@ -142,6 +149,7 @@ export default class Daemon {
                 log(`SERVER STARTED ON PORT: ${port}`)
             })
             await this.initBrowser()
+            await this.notifier.notifyDaemonStarted()
         } catch (e) {
             this.notifier.notifyError("Failed to initialize Voice Type daemon.")
             log(`Startup error: ${e}`)
@@ -154,9 +162,9 @@ export default class Daemon {
     public async destroy() {
         log("Shutting down daemon...")
         this.notifier.destroy()
-        this.page?.close()
-        this.browser?.close()
+        await this.page?.close()
+        await this.browser?.close()
         this.typingController.destroy()
-        clearTimeout(this.stopCooldownTimeout ?? undefined)
+        if (this.stopCooldownTimeout) clearTimeout(this.stopCooldownTimeout)
     }
 }
