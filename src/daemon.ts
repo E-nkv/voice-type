@@ -5,104 +5,118 @@ import { log } from "./logger.js"
 import express, { type Express } from "express"
 import Notifier from "./notifier.js"
 
+type DaemonStatus = "initializing" | "listening" | "stopped"
+
 export default class Daemon {
-    private wsaLanguage: string = "en-US"
+    private wsaLanguage: string
     private browser: Browser | null = null
     private page: Page | null = null
-    private isWSAListening: boolean = false
+    private status: DaemonStatus = "initializing"
+    private isDestroying: boolean = false
     private app: Express
+    // Serialises all state mutations. Tail kept non-rejecting so a failed op
+    // never poisons subsequent calls.
+    private opLock: Promise<unknown> = Promise.resolve()
 
     private typingController: TypingController = new TypingController()
     private notifier: Notifier
-    private stopCooldown: boolean = false
-    private stopCooldownTimeout: NodeJS.Timeout | null = null
 
-    constructor(textNotifsEnabled: boolean, soundsNotifsEnabled: boolean, wsaLanguage?: string) {
+    constructor(
+        textNotifsEnabled: boolean,
+        soundsNotifsEnabled: boolean,
+        wsaLanguage: string = "en-US"
+    ) {
         this.app = express()
-        this.setupRoutes()
+        this.wsaLanguage = wsaLanguage
         this.notifier = new Notifier({ textNotifsEnabled, soundsNotifsEnabled })
-        if (wsaLanguage !== undefined) this.wsaLanguage = wsaLanguage
+        this.setupRoutes()
     }
+
+    private withLock<T>(fn: () => Promise<T>): Promise<T> {
+        const next = this.opLock.then(fn, fn) as Promise<T>
+        this.opLock = next.then(() => { }, () => { })
+        return next
+    }
+
+    // Routes
 
     private setupRoutes() {
-        this.app.get("/start", async (req, res) => {
-            if (!this.isBrowserReady()) {
-                log("Browser not ready - cannot start transcription")
-                this.notifier.notifyError("Browser not ready yet.")
-                res.status(503).send("Wait for browser")
-                return
-            }
-            if (this.stopCooldown) {
-                log("Start request ignored - still in cooldown period after stop")
-                res.status(429).send("Cooldown active - wait before starting")
-                return
-            }
-            if (this.isWSAListening) {
-                log("Already listening.")
-                return
-            }
-            log("Starting transcription...")
-            this.isWSAListening = true
-            this.notifier.notifyMicStart()
-            await this.page!.evaluate(startListening)
-            res.send("Listening")
+        this.app.get("/status", (_req, res) => {
+            res.send(this.status)
         })
 
-        this.app.get("/stop", async (req, res) => {
-            await this.stopTranscription("intentional")
-            res.send("Stopped")
+        this.app.get("/toggle", async (_req, res) => {
+            try {
+                const r = await this.withLock(() =>
+                    this.status === "listening"
+                        ? this.stopTranscription("intentional")
+                        : this.startTranscription()
+                )
+                res.status(r.status).send(r.message)
+            } catch (err) {
+                res.status(500).send(String(err))
+            }
         })
 
-        this.app.get("/exit", async (req, res) => {
-            await this.notifier.notifyDaemonStop()
+        this.app.get("/exit", (_req, res) => {
+            // Flush response before exit — process.exit can race the TCP write.
+            res.on("finish", async () => {
+                this.notifier.notifyDaemonStop()
+                await this.withLock(() => this.destroy())
+                process.exit(0)
+            })
             res.send("Stopped daemon")
-            await this.destroy()
-            process.exit(0)
         })
     }
 
-    private async stopTranscription(reason: "intentional" | "offline") {
-        if (this.stopCooldown) {
-            log(`Stop request ignored - still in cooldown period (reason: ${reason})`)
-            return
+    private async startTranscription(): Promise<{ status: number; message: string }> {
+        if (!this.isBrowserReady()) {
+            this.notifier.notifyError("Browser not ready yet.")
+            return { status: 503, message: "Wait for browser" }
         }
 
-        if (!this.isBrowserReady()) {
-            log("Browser not ready - cannot stop transcription")
-            return
-        }
-        if (!this.isWSAListening) {
-            log(`Cannot call stop before start (reason: ${reason})`)
-            return
-        }
-        log(`Stopping transcription... Reason: ${reason}`)
-        this.isWSAListening = false
+        await this.getPage().evaluate(startListening)
+        // Flip only after browser confirms — avoids false-listening state on failure.
+        this.status = "listening"
+        this.notifier.notifyMicStart()
+        return { status: 200, message: "Listening" }
+    }
+
+    private async stopTranscription(reason: "intentional" | "offline"): Promise<{ status: number; message: string }> {
+        // Stop browser before flipping — late onSpeechUpdate events are dropped
+        // by the handleSpeechUpdate guard once status changes.
+        await this.getPage().evaluate(stopListening)
+        this.status = "stopped"
         this.typingController.reset()
 
-        // Trigger corresponding notification
-        if (reason === "intentional") {
-            this.notifier.notifyMicStop()
-        } else if (reason === "offline") {
-            this.notifier.notifyOffline()
-        }
+        reason === "intentional" ? this.notifier.notifyMicStop() : this.notifier.notifyOffline()
 
-        // Set cooldown to prevent rapid successive stop requests
-        this.stopCooldown = true
-        if (this.stopCooldownTimeout) {
-            clearTimeout(this.stopCooldownTimeout)
-        }
-        this.stopCooldownTimeout = setTimeout(() => {
-            this.stopCooldown = false
-        }, 100)
+        return { status: 200, message: "Stopped" }
+    }
 
-        await this.page!.evaluate(stopListening)
+    private handleSpeechUpdate(payload: { text: string }) {
+        if (this.status !== "listening") return
+        this.typingController.calculateAndApplyDiff(payload.text)
+    }
+
+    private handleOffline() {
+        this.withLock(() => this.stopTranscription("offline")).catch((err) =>
+            log(`Error handling offline event: ${err}`)
+        )
     }
 
     private isBrowserReady(): boolean {
-        return this.page !== null && this.browser !== null
+        return this.browser !== null && this.page !== null
+    }
+
+    private getPage(): Page {
+        if (!this.page) throw new Error("Page is not initialised")
+        return this.page
     }
 
     private async initBrowser() {
+        if (this.browser) return
+
         this.browser = await puppeteer.launch({
             executablePath: "/usr/bin/google-chrome-stable",
             // @ts-ignore
@@ -129,48 +143,48 @@ export default class Daemon {
         })
 
         this.page = await this.browser.newPage()
-        this.page.on("console", (msg) => console.log("[BROWSER]", msg.text()))
+        this.page.on("console", (msg) => log(`[BROWSER] ${msg.text()}`))
 
-        await this.page.goto("data:text/html,<html><body><h1>Voice Type</h1></body></html>")
+        await this.page.goto("data:text/html,<html><body></body></html>")
         await this.page.exposeFunction("onSpeechUpdate", this.handleSpeechUpdate.bind(this))
         await this.page.exposeFunction("onOffline", this.handleOffline.bind(this))
         await this.page.evaluate(initWSA, this.wsaLanguage)
+
+        this.status = "stopped"
     }
 
-    private handleSpeechUpdate(payload: { text: string }) {
-        this.typingController.calculateAndApplyDiff(payload.text)
-    }
-
-    private async handleOffline(payload: {}) {
-        log("Offline. Please connect to network")
-        await this.stopTranscription("offline")
-    }
-
-    //start spawns browser and server listener
     public async start(port: number) {
         try {
-            this.app.listen(port, "127.0.0.1", () => {
-                log(`server started on port: ${port}`)
+            await new Promise<void>((resolve) => {
+                this.app.listen(port, "127.0.0.1", () => {
+                    log(`Server started on port: ${port}`)
+                    resolve()
+                })
             })
             await this.initBrowser()
-            await this.notifier.notifyDaemonStart("F9")
-        } catch (e) {
-            await this.notifier.notifyError("Failed to initialize Voice Type daemon.")
-            log(`Startup error: ${e}`)
-            process.exit(0)
+            this.notifier.notifyDaemonStart("F9")
+        } catch (err) {
+            log(`Startup error: ${err}`)
+            this.notifier.notifyError("Failed to initialise Voice Type daemon.")
+            process.exit(1)
         }
     }
 
-    /**
-     * Cleanup resources when shutting down the daemon
-     */
     public async destroy() {
-        console.log("\n[DAEMON] Shutting down daemon...")
+        if (this.isDestroying) return
+        this.isDestroying = true
+
         this.notifier.destroy()
         this.typingController.destroy()
-        clearTimeout(this.stopCooldownTimeout ?? undefined)
 
-        await this.page?.close()
-        await this.browser?.close()
+        // Null out first so isBrowserReady() returns false for concurrent
+        // callers before the async close calls run.
+        const page = this.page
+        const browser = this.browser
+        this.page = null
+        this.browser = null
+
+        await page?.close()
+        await browser?.close()
     }
 }
