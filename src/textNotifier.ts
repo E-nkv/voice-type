@@ -179,8 +179,8 @@ export class TextNotifier {
         await this.notify("⏹️ Voice Type Daemon Stopped", "Daemon has been shut down.", "process-stop", "normal")
     }
 
-    async notifyMicStart() {
-        await this.notify(
+    notifyMicStart() {
+        this.notify(
             "🟢 Voice Type Listening...",
             "Typing into the focused window.",
             "microphone-sensitivity-high",
@@ -197,17 +197,12 @@ export class TextNotifier {
         )
     }
 
-    async notifyOffline() {
-        await this.notify(
-            "📡 Connection Error",
-            "WSA requires internet to transcribe speech.",
-            "network-error",
-            "critical",
-        )
+    notifyOffline() {
+        this.notify("📡 Connection Error", "WSA requires internet to transcribe speech.", "network-error", "critical")
     }
 
-    async notifyError(msg: string) {
-        await this.notify("⚠️ Voice Type Error", msg, "dialog-error", "critical")
+    notifyError(msg: string) {
+        this.notify("⚠️ Voice Type Error", msg, "dialog-error", "critical")
     }
 
     async notifyAlreadyRunning() {

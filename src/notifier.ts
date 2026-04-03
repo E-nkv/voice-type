@@ -35,8 +35,8 @@ export default class Notifier {
         this.soundNotifier.notifyStop()
     }
 
-    async notifyOffline() {
-        await this.textNotifier.notifyOffline()
+    notifyOffline() {
+        this.textNotifier.notifyOffline()
         this.soundNotifier.notifyOffline()
     }
 
