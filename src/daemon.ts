@@ -138,7 +138,7 @@ export default class Daemon {
 
     private async handleError(payload: { type: string; message: string }) {
         const { type, message } = payload
-        
+
         // Map error types to user-friendly messages
         let userMessage = message
         switch (type) {
@@ -166,10 +166,10 @@ export default class Daemon {
             default:
                 userMessage = message || `Speech recognition error: ${type}`
         }
-        
+
         log(`Speech recognition error (${type}): ${userMessage}`)
-        await this.notifier.notifyError(userMessage)
-        
+        this.notifier.notifyError(userMessage)
+
         // Stop transcription on most errors, but not on 'no-speech' or 'aborted'
         if (type !== 'no-speech' && type !== 'aborted') {
             await this.stopTranscription("offline")
@@ -190,7 +190,7 @@ export default class Daemon {
                 log(`server started on port: ${port}`)
             })
             await this.initBrowser(browserType, customBrowserPath)
-            await this.notifier.notifyDaemonStart("F9")
+            this.notifier.notifyDaemonStart("F9")
         } catch (e) {
             await this.notifier.notifyError("Failed to initialize Voice Type daemon.")
             console.error(e)

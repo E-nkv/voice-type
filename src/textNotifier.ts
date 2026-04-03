@@ -166,7 +166,7 @@ export class TextNotifier {
 
     // --- Specialized Text Notifiers ---
 
-    async notifyDaemonStarted(hotkey: string = "F9") {
+    async notifyDaemonStart(hotkey: string = "F9") {
         await this.notify(
             "🎤 Voice Type Daemon Active",
             "Ready to transcribe, start recording.",
@@ -175,7 +175,7 @@ export class TextNotifier {
         )
     }
 
-    async notifyDaemonStopped(hotkey: string = "F10") {
+    async notifyDaemonStop(hotkey: string = "F10") {
         await this.notify("⏹️ Voice Type Daemon Stopped", "Daemon has been shut down.", "process-stop", "normal")
     }
 
@@ -183,15 +183,6 @@ export class TextNotifier {
         await this.notify(
             "🟢 Voice Type Listening...",
             "Typing into the focused window.",
-            "microphone-sensitivity-high",
-            "normal",
-        )
-    }
-
-    async notifyDaemonStop() {
-        await this.notify(
-            "Voice Type daemon stopped",
-            "All resources have been released",
             "microphone-sensitivity-high",
             "normal",
         )
