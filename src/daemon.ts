@@ -1,12 +1,13 @@
 import { Browser, Page } from "puppeteer-core"
 import * as browser from "./browser.js"
-import TypingController from "./typingController.js"
+import DotoolTypingController from "./dotoolTypingController.js"
 import { log } from "./logger.js"
 import express, { type Express, type Response } from "express"
 import Notifier from "./notifier.js"
 import { type BrowserType, launchBrowser } from "./browserLauncher.js"
 import { createServer } from "net"
 import { PORT } from "./index.js"
+import type { TypingController } from "./typingController.js"
 
 function isPortInUse(port: number): Promise<boolean> {
     return new Promise((resolve) => {
@@ -31,7 +32,7 @@ export default class Daemon {
     private isWSAListening: boolean = false
     private app: Express
 
-    private typingController: TypingController = new TypingController()
+    private typingController: TypingController = new DotoolTypingController()
     private notifier: Notifier
     private stopCooldown: boolean = false
 
@@ -112,7 +113,7 @@ export default class Daemon {
         log(`Stopping transcription... Reason: ${reason}`)
         this.isWSAListening = false
         this.typingController.hasStopped = true
-        this.typingController.reset()
+        this.typingController.resetInternalBuffer()
 
         // Trigger corresponding notification
         if (reason === "intentional") {
