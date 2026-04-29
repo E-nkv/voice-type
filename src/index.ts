@@ -19,7 +19,12 @@ if (parsedFlags.detached) {
 process.title = "voice-type"
 process.argv[0] = "voice-type"
 
-const daemon = new Daemon(parsedFlags.textNotifs, parsedFlags.soundNotifs, parsedFlags.lang)
+const daemon = new Daemon(
+    parsedFlags.textNotifs,
+    parsedFlags.soundNotifs,
+    parsedFlags.lang,
+    parsedFlags.forceEnigo
+)
 
 async function destroyDaemon() {
     await daemon.destroy()

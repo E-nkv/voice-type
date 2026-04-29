@@ -13,3 +13,6 @@ flatpak/*.flatpak
 flatpak/*.flatpak.ref
 .flatpak-builder
 
+src/manual-tests
+
+typer-cli/target/

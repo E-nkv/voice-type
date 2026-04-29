@@ -14,4 +14,5 @@ export interface CliFlags {
     browserPath?: string
     detached: boolean
     help: boolean
+    forceEnigo: boolean
 }

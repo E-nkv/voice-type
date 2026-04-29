@@ -38,6 +38,10 @@ const options = {
         short: "h",
         default: false,
     },
+    "force-enigo": {
+        type: "boolean",
+        default: false,
+    },
 } as const
 
 const HELP_TEXT = `
@@ -52,6 +56,7 @@ Options:
   --no-text                Disable text notifications (default: false)
   --sound                  Enable sound notifications (default: false)
   -d, --detached           Run the daemon in the background (detached mode)
+  --force-enigo            Force use of enigo-based typer (requires typer-cli binary)
   -h, --help               Show this help message
 
 Supported Languages (most common):
@@ -118,6 +123,7 @@ export function parseFlags(args: string[]): CliFlags {
         soundNotifs: values["sound"],
         detached: values.detached,
         help: values.help,
+        forceEnigo: values["force-enigo"],
     }
 }
 

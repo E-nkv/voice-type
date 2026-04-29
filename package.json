@@ -16,6 +16,7 @@
         "assets"
     ],
     "scripts": {
+        "prepare": "cd typer-cli && cargo build --release",
         "dev": "bun --watch src/index.ts",
         "start": "bun run src/index.ts",
         "build": "bun build src/index.ts --outdir dist --target node",

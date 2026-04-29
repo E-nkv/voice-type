@@ -1,5 +1,8 @@
 import { Browser, Page } from "puppeteer-core"
 import * as browser from "./browser.js"
+import { resolve } from "path"
+import { existsSync } from "fs"
+import EnigoTypingController from "./enigoTypingController.js"
 import DotoolTypingController from "./dotoolTypingController.js"
 import { log } from "./logger.js"
 import express, { type Express, type Response } from "express"
@@ -25,6 +28,27 @@ function isPortInUse(port: number): Promise<boolean> {
     })
 }
 
+const ENIGO_BINARY_PATHS = {
+    linux: "/usr/local/share/voice-type/typer-cli",
+    // TODO: add windows path when needed
+}
+
+function getEnigoBinaryPath(): string {
+    // Try production path first
+    if (process.platform === "linux") {
+        if (existsSync(ENIGO_BINARY_PATHS.linux)) {
+            return ENIGO_BINARY_PATHS.linux
+        }
+    }
+    // Fall back to dev path (relative to dist/)
+    const devPath = resolve(__dirname, "../typer-cli/target/release/typer-cli")
+    if (existsSync(devPath)) {
+        return devPath
+    }
+    // Return production path anyway - error will be handled by caller
+    return process.platform === "linux" ? ENIGO_BINARY_PATHS.linux : devPath
+}
+
 export default class Daemon {
     private wsaLanguage: string
     private browser: Browser | null = null
@@ -32,15 +56,32 @@ export default class Daemon {
     private isWSAListening: boolean = false
     private app: Express
 
-    private typingController: TypingController = new DotoolTypingController()
+    private typingController: TypingController
     private notifier: Notifier
     private stopCooldown: boolean = false
 
-    constructor(textNotifsEnabled: boolean, soundsNotifsEnabled: boolean, wsaLanguage?: string) {
+    constructor(
+        textNotifsEnabled: boolean,
+        soundsNotifsEnabled: boolean,
+        wsaLanguage?: string,
+        forceEnigo?: boolean
+    ) {
         this.app = express()
         this.setupRoutes()
         this.notifier = new Notifier({ textNotifsEnabled, soundsNotifsEnabled })
         this.wsaLanguage = wsaLanguage || "en-US"
+
+        // Initialize typing controller
+        if (forceEnigo) {
+            const binPath = getEnigoBinaryPath()
+            if (!existsSync(binPath)) {
+                console.error(`Error: --force-enigo specified but typer-cli not found at: ${binPath}`)
+                process.exit(1)
+            }
+            this.typingController = new EnigoTypingController(binPath)
+        } else {
+            this.typingController = new DotoolTypingController()
+        }
     }
 
     private setupRoutes() {
