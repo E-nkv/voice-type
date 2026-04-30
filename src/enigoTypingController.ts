@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "child_process"
 import { log } from "./logger.js"
 import { TypingController } from "./typingController.js"
+import { dirname, join } from "path"
 
 export default class EnigoTypingController extends TypingController {
     private enigo: ChildProcess
@@ -27,8 +28,11 @@ export default class EnigoTypingController extends TypingController {
         this.enigo.kill("SIGTERM")
     }
 
-    constructor(binaryPath: string) {
+    constructor() {
         super()
+
+        const binaryPath = getEnigoPath()
+
         this.enigo = spawn(binaryPath, [], {
             stdio: ["pipe", "inherit", "inherit"],
         })
@@ -44,4 +48,11 @@ export default class EnigoTypingController extends TypingController {
             log(`enigo finished with signal [${signal}]`)
         })
     }
+}
+
+function getEnigoPath() {
+    const isWin = process.platform === "win32"
+    const binName = isWin ? "enigo-cli.exe" : "enigo-cli"
+    const enigoPath = join(dirname(process.execPath), binName)
+    return enigoPath
 }

@@ -15,4 +15,4 @@ flatpak/*.flatpak.ref
 
 src/manual-tests
 
-typer-cli/target/
+enigo-cli/target/

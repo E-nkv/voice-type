@@ -1,7 +1,5 @@
 import { Browser, Page } from "puppeteer-core"
 import * as browser from "./browser.js"
-import { resolve } from "path"
-import { existsSync } from "fs"
 import EnigoTypingController from "./enigoTypingController.js"
 import DotoolTypingController from "./dotoolTypingController.js"
 import { log } from "./logger.js"
@@ -11,6 +9,8 @@ import { type BrowserType, launchBrowser } from "./browserLauncher.js"
 import { createServer } from "net"
 import { PORT } from "./index.js"
 import type { TypingController } from "./typingController.js"
+
+const LOCALHOST_IPV4 = "127.0.0.1"
 
 function isPortInUse(port: number): Promise<boolean> {
     return new Promise((resolve) => {
@@ -24,29 +24,8 @@ function isPortInUse(port: number): Promise<boolean> {
             })
             server.close()
         })
-        server.listen(port, "127.0.0.1")
+        server.listen(port, LOCALHOST_IPV4)
     })
-}
-
-const ENIGO_BINARY_PATHS = {
-    linux: "/usr/local/share/voice-type/typer-cli",
-    // TODO: add windows path when needed
-}
-
-function getEnigoBinaryPath(): string {
-    // Try production path first
-    if (process.platform === "linux") {
-        if (existsSync(ENIGO_BINARY_PATHS.linux)) {
-            return ENIGO_BINARY_PATHS.linux
-        }
-    }
-    // Fall back to dev path (relative to dist/)
-    const devPath = resolve(__dirname, "../typer-cli/target/release/typer-cli")
-    if (existsSync(devPath)) {
-        return devPath
-    }
-    // Return production path anyway - error will be handled by caller
-    return process.platform === "linux" ? ENIGO_BINARY_PATHS.linux : devPath
 }
 
 export default class Daemon {
@@ -60,28 +39,15 @@ export default class Daemon {
     private notifier: Notifier
     private stopCooldown: boolean = false
 
-    constructor(
-        textNotifsEnabled: boolean,
-        soundsNotifsEnabled: boolean,
-        wsaLanguage?: string,
-        forceEnigo?: boolean
-    ) {
+    constructor(textNotifsEnabled: boolean, soundsNotifsEnabled: boolean, wsaLanguage?: string, forceEnigo?: boolean) {
         this.app = express()
         this.setupRoutes()
         this.notifier = new Notifier({ textNotifsEnabled, soundsNotifsEnabled })
         this.wsaLanguage = wsaLanguage || "en-US"
 
         // Initialize typing controller
-        if (forceEnigo) {
-            const binPath = getEnigoBinaryPath()
-            if (!existsSync(binPath)) {
-                console.error(`Error: --force-enigo specified but typer-cli not found at: ${binPath}`)
-                process.exit(1)
-            }
-            this.typingController = new EnigoTypingController(binPath)
-        } else {
-            this.typingController = new DotoolTypingController()
-        }
+        if (process.platform == "linux" && !forceEnigo) this.typingController = new DotoolTypingController()
+        else this.typingController = new EnigoTypingController()
     }
 
     private setupRoutes() {
@@ -206,7 +172,7 @@ export default class Daemon {
         }
 
         try {
-            this.app.listen(port, "127.0.0.1", () => {
+            this.app.listen(port, LOCALHOST_IPV4, () => {
                 log(`server started on port: ${port}`)
             })
             await this.initBrowser(browserType, customBrowserPath)
